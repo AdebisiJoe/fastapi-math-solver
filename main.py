@@ -35,7 +35,7 @@ app.add_middleware(
 )
 
 # Initialize OpenAI LLM
-llm = OpenAI(temperature=0.2)
+llm = OpenAI(model="gpt-4o-mini", temperature=0.2)
 
 # Initialize OpenAI Embeddings
 embeddings = OpenAIEmbeddings()

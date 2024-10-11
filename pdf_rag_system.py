@@ -9,7 +9,10 @@ from langchain.prompts import PromptTemplate
 class PDFRAGSystem:
     def __init__(self, persist_directory="./pdf_rag_db"):
         self.embeddings = OpenAIEmbeddings()
-        self.llm = OpenAI(temperature=0.2)
+        
+        # Specify the use of gpt-4o-mini model
+        self.llm = OpenAI(model="gpt-4o-mini", temperature=0.2)
+        
         self.vector_store = Chroma(embedding_function=self.embeddings, persist_directory=persist_directory)
         
         prompt_template = PromptTemplate(
