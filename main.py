@@ -48,7 +48,7 @@ pdf_rag_system = PDFRAGSystem()
 class Question(BaseModel):
     question: str
 
-@app.post("/solve")
+@app.post("/math/solve")
 async def solve_question(question: Question):
     try:
         # Use the LLMChain to generate the solution
@@ -64,7 +64,7 @@ async def solve_question(question: Question):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to solve the question: {str(e)}")
 
-@app.post("/solve-rag")
+@app.post("/math/solve-rag")
 async def solve_question_rag(question: Question):
     try:
         # Use the PDF RAG system to answer the question
@@ -77,7 +77,7 @@ async def solve_question_rag(question: Question):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to solve the question using RAG: {str(e)}")
 
-@app.post("/similar")
+@app.post("/math/similar")
 async def get_similar_questions(question: Question):
     try:
         # Create embeddings for the input question
