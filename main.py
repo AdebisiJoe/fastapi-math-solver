@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 import numpy as np
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
@@ -24,6 +25,15 @@ if not openai_api_key:
 # Initialize FastAPI app
 app = FastAPI()
 
+# Configure CORS to allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
 # Initialize OpenAI LLM
 llm = OpenAI(temperature=0.2)
 
@@ -36,7 +46,7 @@ vector_store = Chroma(embedding_function=embeddings, persist_directory="./chroma
 # Create a prompt template for math problem solving
 math_prompt = PromptTemplate(
     input_variables=["question"],
-    template="Solve the following math problem step by step. Give me the answer using LaTeX: {question}"
+    template="Solve the following math question step by step. Give me the answer using LaTeX: {question}"
 )
 
 # Create an LLMChain for math problem solving
