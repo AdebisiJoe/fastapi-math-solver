@@ -1,17 +1,14 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-import numpy as np
 from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
-from langchain_community.llms import OpenAI
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+from langchain.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
 import os
 from dotenv import load_dotenv
 from pdf_rag_system import PDFRAGSystem
-
 
 # Load environment variables from the .env file
 load_dotenv()
@@ -28,14 +25,14 @@ app = FastAPI()
 # Configure CORS to allow all origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize OpenAI LLM
-llm = OpenAI(model="gpt-4o-mini", temperature=0.2)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
 
 # Initialize OpenAI Embeddings
 embeddings = OpenAIEmbeddings()
@@ -44,13 +41,12 @@ embeddings = OpenAIEmbeddings()
 vector_store = Chroma(embedding_function=embeddings, persist_directory="./chroma_db")
 
 # Create a prompt template for math problem solving
-math_prompt = PromptTemplate(
-    input_variables=["question"],
-    template="Solve the following math question step by step. Give me the answer using LaTeX: {question}"
+math_prompt = ChatPromptTemplate.from_template(
+    "Solve the following math question step by step. Give me the answer using LaTeX: {question}"
 )
 
-# Create an LLMChain for math problem solving
-math_chain = LLMChain(llm=llm, prompt=math_prompt)
+# Create a chain for math problem solving
+math_chain = math_prompt | llm | RunnablePassthrough()
 
 # Initialize PDF RAG System
 pdf_rag_system = PDFRAGSystem()
@@ -61,17 +57,32 @@ class Question(BaseModel):
 @app.post("/math/solve")
 async def solve_question(question: Question):
     try:
-        # Use the LLMChain to generate the solution
-        solution = math_chain.run(question=question.question)
+        # Use the chain to generate the solution
+        result = math_chain.invoke({"question": question.question})
+        
+        # Extract the solution string
+        if isinstance(result, str):
+            solution = result
+        elif isinstance(result, dict) and 'text' in result:
+            solution = result['text']
+        elif hasattr(result, 'content'):
+            solution = result.content
+        else:
+            solution = str(result)
         
         # Create embeddings for the question
         embedding = embeddings.embed_query(question.question)
         
         # Store the question and solution in the Chroma vector store
-        vector_store.add_texts([question.question], metadatas=[{"question": question.question, "solution": solution}], embeddings=[embedding])
+        vector_store.add_texts(
+            [question.question], 
+            metadatas=[{"question": question.question, "solution": solution}], 
+            embeddings=[embedding]
+        )
         
         return {"solution": solution}
     except Exception as e:
+        print(f"Error in solve_question: {str(e)}")  # For debugging
         raise HTTPException(status_code=500, detail=f"Failed to solve the question: {str(e)}")
 
 @app.post("/math/solve-rag")
@@ -120,7 +131,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
 
-@app.get("/view_pdf_content", response_class=HTMLResponse)
+@app.get("/view_vector_rag_content", response_class=HTMLResponse)
 async def view_pdf_content():
     try:
         # Check if the vector store exists
@@ -178,7 +189,6 @@ async def view_pdf_content():
         # Log the full error for debugging
         print(f"Error in view_pdf_content: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve PDF content: {str(e)}")
-
 
 if __name__ == "__main__":
     import uvicorn
