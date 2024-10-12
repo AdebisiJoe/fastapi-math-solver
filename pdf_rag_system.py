@@ -1,6 +1,6 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
@@ -8,7 +8,7 @@ from langchain.prompts import PromptTemplate
 class PDFRAGSystem:
     def __init__(self, persist_directory="./pdf_rag_db"):
         self.embeddings = OpenAIEmbeddings()
-        self.llm = OpenAI(model="gpt-4o-mini", temperature=0.2)
+        self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
         self.vector_store = Chroma(embedding_function=self.embeddings, persist_directory=persist_directory)
         
         prompt_template = PromptTemplate(
