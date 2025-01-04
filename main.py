@@ -54,6 +54,12 @@ pdf_rag_system = PDFRAGSystem()
 class Question(BaseModel):
     question: str
 
+@app.get("/")
+async def read_root():
+    """Root endpoint that redirects to the API documentation."""
+    return RedirectResponse(url="/docs")
+
+
 @app.post("/math/solve")
 async def solve_question(question: Question):
     try:
